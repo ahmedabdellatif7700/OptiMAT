@@ -1,27 +1,24 @@
 classdef RxDSP
     methods
         function errors = process_signal(~, params)
-            rx = params.get_param('RxSignal');
-            a_demod = 1 / sqrt(10);
+            % Get received symbols and original bits
+            rx = params.get_param('r_k');  % Received QPSK symbols
+            original_bits = params.get_param('OriginalBits');
 
-            % Demodulate the received signal
-            B5 = (imag(rx) < 0);
-            B6 = (imag(rx) < 2 * a_demod) & (imag(rx) > -2 * a_demod);
-            B7 = (real(rx) < 0);
-            B8 = (real(rx) < 2 * a_demod) & (real(rx) > -2 * a_demod);
+            % QPSK demodulation (Gray coding)
+            % Decision boundaries (normalized for unit power)
+            B1 = (real(rx) > 0);  % First bit (I channel)
+            B2 = (imag(rx) > 0);  % Second bit (Q channel)
 
-            % Combine demodulated bits into a 4xN matrix
-            temp = [B5; B6; B7; B8];
-            B_hat = temp(:);
+            % Combine demodulated bits into a 2xN matrix
+            temp = [B1; B2];
+            B_hat = temp(:);  % Flatten in column-major order
 
-            % Get the original bits
-            uncoded_bits = params.get_param('OriginalBits');
-
-            % Reshape original bits into a 4xN matrix and flatten in column-major order
-            B_orig = reshape(uncoded_bits, 4, []);
+            % Reshape original bits into a 2xN matrix and flatten
+            B_orig = reshape(original_bits, 2, []);
             B_orig_flat = B_orig(:);
 
-            % Calculate errors
+            % Calculate and return number of bit errors
             errors = sum(abs(B_orig_flat - B_hat));
         end
     end

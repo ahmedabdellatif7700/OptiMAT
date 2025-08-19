@@ -1,17 +1,43 @@
-classdef TxDSP
+classdef TxDSP < handle
+    properties
+        symbols;  % Transmitted symbols
+    end
+
     methods
-        function generate_signal(~, params)
-            bit_count = params.get_param('BitCount');
-            uncoded_bits = randi([0 1], 1, bit_count);
-            B = reshape(uncoded_bits, 4, []);
-            B1 = B(1, :);
-            B2 = B(2, :);
-            B3 = B(3, :);
-            B4 = B(4, :);
-            a = sqrt(1/10);
-            tx = a * (-2 * (B3 - 0.5) .* (3 - 2 * B4) - 1j * 2 * (B1 - 0.5) .* (3 - 2 * B2));
-            params.set_param('TxSignal', tx);
-            params.set_param('OriginalBits', uncoded_bits);
+        function obj = TxDSP()
+            % Constructor
+        end
+
+        function [obj, symbols] = generate_signal(obj, params, bits)
+            % Generate QPSK symbols from bits
+            k = params.get_param('k');
+            a = params.get_param('a');
+
+            % Check if bits are divisible by k
+            if mod(length(bits), k) ~= 0
+                error('Number of bits must be divisible by k (bits per symbol).');
+            end
+
+            % Reshape bits into k rows (2 rows for QPSK)
+            B = reshape(bits, k, [])';
+
+            % Pre-allocate symbols array
+            symbols = zeros(size(B, 1), 1, 'like', 1+1j);
+
+            % QPSK mapping with Gray coding (more efficient implementation)
+            for i = 1:size(B, 1)
+                b1 = B(i, 1);  % First bit
+                b2 = B(i, 2);  % Second bit
+
+                % Gray-coded QPSK mapping using direct calculation
+                I = (2*b1 - 1);  % BPSK for I channel (-1 or +1)
+                Q = (2*b2 - 1);  % BPSK for Q channel (-1 or +1)
+                symbols(i) = a * complex(I, Q);
+            end
+
+            % Save to Parameters and object property
+            params.set_param('t_k', symbols);
+            obj.symbols = symbols;
         end
     end
 end
